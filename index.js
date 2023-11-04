@@ -9,8 +9,7 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 // middleware
-app.use(
-  cors({
+app.use(cors({
     origin: ["http://localhost:5173"],
     credentials: true
   })
@@ -31,7 +30,7 @@ const client = new MongoClient(uri, {
 
 // middlewares
 const logger = (req, res, next)=>{
-    console.log(req.method.req.url);
+    console.log('log info', req.method, req.url);
     next()
 }
 const verifyToken = (req, res, next)=>{
@@ -43,7 +42,7 @@ if (!token) {
 }
 jwt.verify(token, process.env.ACCESS_TOKEN_SECRET , (err, decoded) =>{
     if (err) {
-        return res.send({message: 'unauthenticated access'})
+        return res.status(401).send({message: 'unauthenticated access'})
     }
     req.user = decoded
     next()
@@ -60,7 +59,7 @@ async function run() {
     const bookingCollection = client.db("carDoctor").collection("bookings");
 
     // auth related api
-    app.post("/jwt", async (req, res) => {
+    app.post("/jwt", logger, async (req, res) => {
       const user = req.body;
       console.log("user for token", user);
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
@@ -70,8 +69,8 @@ async function run() {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-      }).
-      send({ success: true });
+      })
+      .send({ success: true });
     });
     app.post("logout", async (req, res) => {
       const user = req.body;
@@ -102,8 +101,8 @@ async function run() {
     // bookings
     app.get("/bookings", logger, verifyToken, async (req, res) => {
       console.log(req.query?.email);
-      console.log("cookies", req.cookies);
-      if (req.query?.email !== req.query?.email) {
+      console.log("cookies", req.user);
+      if (req.user?.email !== req.query?.email) {
         return res.status(403).send({message: 'forbidden access'})
       }
       let query = {};
